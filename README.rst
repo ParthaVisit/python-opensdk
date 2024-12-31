@@ -1,5 +1,5 @@
-TestProject SDK For Python
-==========================
+TestProject OpenSDK for Python
+==============================
 
 `TestProject <https://testproject.io/>`__ is a **Free** Test Automation platform for Web, Mobile and API testing.
 
@@ -36,9 +36,11 @@ Installation
 ------------
 The TestProject Python SDK is `available on PyPI <https://pypi.org/project/testproject-python-sdk/>`__. All you need to do is add it as a Python module using::
 
-  pip install testproject-python-sdk
+  pip3 install testproject-python-sdk
 
 and you're good to go.
+
+    Minimum Python version required is 3.6
 
 Test Development
 ================
@@ -92,6 +94,13 @@ The examples shown in this document are based on Chrome. The SDK works in the sa
 * Internet Explorer
 * Android apps (using Appium)
 * iOS apps (using Appium)
+* Generic driver (for non-UI tests)
+
+WebDriverWait
+-------------
+In order to use Selenium's WebDriverWait with TestProject SDK all you need to do is import it directly from the SDK classes instead of from selenium's libraries.
+
+An example can be seen `here <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/web_driver_wait/web_driver_wait_test.py>`__.
 
 Development token
 -----------------
@@ -107,10 +116,57 @@ Alternatively, you can pass in your developer token as an argument to the driver
         # Your test code goes here
         driver.quit()
 
+> If a token is specified in both the driver constructor and in an environment variable, the token in the environment will be the one used.
+
 TestProject Agent
 -----------------
 By default, drivers communicate with the local Agent listening on http://localhost:8585.
-This value can be overridden by setting the ``TP_AGENT_URL`` environment variable to the correct Agent address.
+This value can be overridden by setting the ``TP_AGENT_URL`` environment variable to the correct Agent address, or pass it in the driver constructor.
+
+Remote Agent
+-------------
+By default, drivers communicate with the local Agent listening on http://localhost:8585.
+
+Agent URL (host and port), can be also provided explicitly using this constructor using ``agent_url`` parameter:
+
+.. code-block:: python
+
+    driver = webdriver.Chrome(agent_url='http://remote-ip:port')
+
+
+**NOTE:** By default, the agent binds to localhost.
+In order to allow the SDK to communicate with agents running on a remote machine (*On the same network*), the agent should bind to an external interface.
+For additional documentation on how to achieve such, please refer [here](https://docs.testproject.io/testproject-agents/testproject-agent-cli#start)
+
+Remote (Cloud) Driver
+---------------------
+
+By default, TestProject Agent communicates with the local Selenium or Appium server.
+In order to initialize a remote driver for cloud providers such as SauceLabs or BrowserStack,
+a custom capability ``cloud:URL`` should be set, for example:
+
+*SauceLabs*
+
+.. code-block:: python
+
+    def driver():
+        chrome_options = ChromeOptions()
+        chrome_options.set_capability("cloud:URL", "https://{USERNAME}:{PASSWORD}@ondemand.us-west-1.saucelabs.com:443/wd/hub")
+        driver = webdriver.Chrome(chrome_options=chrome_options, projectname="Examples")
+        yield driver
+        driver.quit()
+
+
+*BrowserStack*
+
+.. code-block:: python
+
+    def driver():
+        chrome_options = ChromeOptions()
+        chrome_options.set_capability("cloud:URL", "https://{USERNAME}:{PASSWORD}@hub-cloud.browserstack.com/wd/hub")
+        driver = webdriver.Chrome(chrome_options=chrome_options, projectname="Examples")
+        yield driver
+        driver.quit()
 
 Reports
 =======
@@ -135,8 +191,8 @@ The SDK will attempt to infer Project and Job names when you use pytest or unitt
 
 Examples using inferred project and job names:
 
-* `pytest <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/frameworks/pytest/implicit_report_test.py>`__
-* `unittest <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/frameworks/unittest/implicit_report_test.py>`__
+* `pytest <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/frameworks/pytest/implicit_report_test.py>`__
+* `unittest <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/frameworks/unittest/implicit_report_test.py>`__
 
 Explicit project and job names
 ------------------------------
@@ -163,8 +219,36 @@ or using the ``@report`` decorator:
 
 Examples using explicitly specified project and job names:
 
-* `pytest <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/frameworks/pytest/explicit_report_test.py>`__
-* `unittest <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/frameworks/unittest/explicit_report_test.py>`__
+* `pytest <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/frameworks/pytest/explicit_report_test.py>`__
+* `unittest <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/frameworks/unittest/explicit_report_test.py>`__
+
+Reporting extensions
+--------------------
+Reporting extensions extend the TestProject SDK reporting capabilities by intercepting unit testing framework assertion errors and reporting them as failed steps.
+
+This functionality can be added by decorating your test method with the ``@report_assertion_errors`` decorator.
+
+This decorator has an optional boolean argument 'screenshot' that will decide if failed assertions will include screenshots in the report.
+
+.. code-block:: python
+
+    from src.testproject.decorator import report_assertion_errors
+
+    @report_assertion_errors
+    def test_automatically_report_assertion_error():
+        driver = webdriver.Chrome()
+        assert 1 == 2  # This assertion will be reported automatically as a failed step
+        driver.quit()
+
+    @report_assertion_errors(screenshot=False)
+    def test_automatically_report_assertion_error_without_screenshots():
+        driver = webdriver.Chrome()
+        assert 1 == 2  # This assertion will be reported automatically as a failed step and no screenshot will be taken
+        driver.quit()
+
+Here is a working example for `pytest <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/reports/report_failed_pytest_assertion_test.py>`__, and here is one for `unittest <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/reports/report_failed_unittest_assertion_test.py>`__.
+
+Please make sure to follow the advice given `here <#the-importance-of-using-quit>`__ to ensure correct test name reporting.
 
 Test reports
 ------------
@@ -189,7 +273,7 @@ To override the inferring of the test name and specify a custom test name instea
         # Your test code goes here
         driver.quit()
 
-Here is a complete example using `automatic reporting <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/reports/automatic_reporting_test.py>`__.
+Here is a complete example using `automatic reporting <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/reports/automatic_reporting_test.py>`__.
 
 Manual test reporting
 ^^^^^^^^^^^^^^^^^^^^^
@@ -213,10 +297,50 @@ If this feature is disabled, or you would like to add steps manually, you can us
     def test_report_step_manually():
         driver = webdriver.Chrome()
         # Your test code goes here
-        driver.report().step(description='My step description', message='An additional message', passed=False, screenshot=True)
+        driver.report().step(description='My step description', message='An additional message', passed=False,
+                             screenshot=True, element=element_search_criteria_object, inputs=dict_of_input_parameters,
+                             outputs=dict_of_output_parameters)
         driver.quit()
 
-Here is a complete example using `manual test reporting of tests and steps <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/reports/manual_reporting_test.py>`__.
+Here is a complete example using `manual test reporting of tests and steps <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/reports/manual_reporting_test.py>`__.
+
+Step settings
+^^^^^^^^^^^^^
+Step settings allow controlling driver default execution and reporting behavior such as:
+
+* Default timeout.
+* Sleep duration Before/After step execution.
+* Screenshot capturing logic.
+* Execution result inversion.
+
+Here is an example on how to take a screenshot upon any driver command executed:
+
+.. code-block:: python
+
+    def test_use_step_settings():
+        driver = webdriver.Chrome()
+        # Using StepSettings for the whole test.
+        driver.step_settings = StepSettings(screenshot_condition=TakeScreenshotConditionType.Always)
+        # Your test code goes here - all driver commands will use the defined step_settings
+        driver.quit()
+
+Single step settings override
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+For convenience we can also use the StepSettings inside a 'with' compound statement called DriverStepSettings.
+
+Here is an example on how a single step can be used with different step settings.
+By default, screenshots are taken on step failures only, the following example demonstrates how to override this
+behavior and take a screenshot when a step passes:
+
+.. code-block:: python
+
+    def test_use_single_step_settings():
+        driver = webdriver.Chrome()
+        # A single step we want to run with an overriding StepSettings.
+        with DriverStepSettings(driver, StepSettings(screenshot_condition=TakeScreenshotConditionType.Success)):
+        driver.get("https://example.testproject.io/web/")  # Screenshot will be taken only if step passes.
+        
+        driver.get("https://example.testproject.io/web/")  # Screenshot will be taken only if step fails (default).
 
 Disabling reports
 -----------------
@@ -319,6 +443,38 @@ Upon calling ``quit()``, the SDK will send all remaining report items to the Age
         def tearDown(self):
             self.driver.quit()
 
+Cloud and Local Report
+----------------------
+By default, the execution report is uploaded to the cloud, and a local report is created, as an HTML file in a temporary folder.
+
+At the end of execution, the report is uploaded to the cloud and SDK outputs to the console/terminal the path for a local report file:
+
+`Execution Report: {temporary_folder}/report.html`
+
+This behavior can be controlled, by requesting only a `LOCAL` or only a `CLOUD` report.
+
+    When the Agent is offline, and only a _cloud_ report is requested, execution will fail with appropriate message.
+
+Via a driver constructor:
+
+.. code-block:: python
+
+    driver = webdriver.Chrome(report_type=ReportType.LOCAL)
+
+Control Path and Name of Generated Report
+-----------------------------------------
+
+By default, the local reports name is the timestamp of the test execution, and the path is the reports directory in the agent data folder.
+
+The SDK provides a way to override the default values of the generated local reports name and path.
+
+Via driver constructor:
+
+.. code-block:: python
+
+    driver = ChromeDriver(chrome_options=ChromeOptions(), report_name="Python Local report", report_path="/my_executions/reports);
+
+
 Logging
 -------
 The TestProject Python SDK uses the ``logging`` framework built into Python.
@@ -333,29 +489,111 @@ If you wish, you can override the default log configuration:
 
 See `this page <https://docs.python.org/3/library/logging.html#logging-levels>`__ for a list of accepted logging levels and `look here <https://docs.python.org/3/howto/logging.html#changing-the-format-of-displayed-messages>`__ for more information on how to define a custom logging format.
 
+Behave Support
+--------------
+The SDK also supports automatic reporting of Behave features, scenarios and steps using the @behave_reporter decorator.
+
+It will disable the reporting of driver commands and automatic reporting of tests.
+Instead, it will report:
+
+* A test for every scenario in a feature file
+* All steps in a scenario as steps in the corresponding test
+* Steps are automatically marked as passed or failed, to create comprehensive living documentation from your
+  specifications on TestProject Cloud.
+
+To enable Behave feature reporting, in your environment.py decorate one or more of the following methods:
+
+* method used to initialize your driver (usually before_all or before_feature to store the driver in the behave context)
+* after_step
+* after_scenario
+
+    Storing the driver in the context provides direct access to the driver throughout the program
+    such as in the step implementations.
+
+.. code-block:: python
+
+    @behave_reporter
+    def before_all(context):
+        context.driver = webdriver.Chrome(projectname="Behave BDD")
+
+
+    @behave_reporter
+    def after_step(context, step):
+        pass
+
+
+    @behave_reporter
+    def after_scenario(context, scenario):
+        pass
+
+
+By default, screenshots are taken only when step fail in your test, if you would like to change
+the behavior to always take a screenshot, pass the screenshot argument as ``True`` in your decorator.
+
+.. code-block:: python
+
+    @behave_reporter(screenshot=True)
+    def after_step(context, step):
+        pass
+
+Addon Proxy
+-----------
+
+One of the greatest features of the TestProject platform is the ability to execute a code written by someone else. 
+It can be your account colleagues, writing actions that you can reuse, or TestProject community users creating addons and solving common automation challenges.
+
+To get started, download a source file with the proxy class for the Action(s) you want to execute. 
+It can be done by navigating to the `Addons page <https://app.testproject.io/#/addons>`__, opening an addon, 
+and clicking on the `Proxy` link at the bottom left corner of the popup.
+
+Now, let's pretend that one of your colleagues coded and uploaded an Addon naming it - `Example Addon`. 
+To use it in your test, download its proxy source file, add it to your project and invoke the actions using the following driver method:
+
+.. code-block:: python
+
+    driver.addons().execute()
+
+That expects an instance of the `ActionProxy` class. For example:
+
+.. code-block:: python
+
+    # Use Addon proxy to invoke 'Clear Fields' Action
+    driver.addons().execute(ClearFieldsAction())
+
+Another example using 'Type Random Phone' Action:
+
+.. code-block:: python
+
+    # Use Addon proxy to invoke 'Type Random Phone' Action
+    # Notice how the action parameters are provided using an action proxy convenience method
+    driver.addons().execute(TypeRandomPhoneAction("1", 10), by=By.CSS_SELECTOR, by_value="#phone")
+
+Refer to the `Addon Proxy Test <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/proxy_examples/web_example_addon.py>`__ for complete example source.
+
 Examples
 --------
 Here is a list of all examples for the different drivers that are supported by this SDK:
 
 *Web*
 
-* `Chrome test <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/drivers/web/chrome_driver_test.py>`__
-* `Firefox test <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/drivers/web/firefox_driver_test.py>`__
-* `Safari test <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/drivers/web/safari_driver_test.py>`__
-* `Edge test <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/drivers/web/edge_driver_test.py>`__
-* `Internet Explorer test <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/drivers/web/ie_driver_test.py>`__
+* `Chrome test <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/drivers/web/chrome_driver_test.py>`__
+* `Firefox test <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/drivers/web/firefox_driver_test.py>`__
+* `Safari test <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/drivers/web/safari_driver_test.py>`__
+* `Edge test <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/drivers/web/edge_driver_test.py>`__
+* `Internet Explorer test <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/drivers/web/ie_driver_test.py>`__
+* `Addon Proxy Test <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/proxy_examples/web_example_addon.py>`__
 
 *Android*
 
-* `Android native test <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/drivers/android/android_driver_test.py>`__
+* `Android native test <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/drivers/android/android_driver_test.py>`__
 * `Android native app <https://github.com/testproject-io/android-demo-app>`__
-* `Web test on mobile Chrome <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/drivers/android/android_driver_chrome_test.py>`__
+* `Web test on mobile Chrome <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/drivers/android/android_driver_chrome_test.py>`__
 
 *iOS*
 
-* `iOS native test <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/drivers/ios/ios_driver_test.py>`__
+* `iOS native test <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/drivers/ios/ios_driver_test.py>`__
 * `iOS native app <https://github.com/testproject-io/ios-demo-app>`__
-* `Web test on mobile Safari <https://github.com/testproject-io/python-sdk/blob/master/tests/examples/drivers/ios/ios_driver_safari_test.py>`__
+* `Web test on mobile Safari <https://github.com/testproject-io/python-opensdk/blob/master/tests/examples/drivers/ios/ios_driver_safari_test.py>`__
 
 License
 -------

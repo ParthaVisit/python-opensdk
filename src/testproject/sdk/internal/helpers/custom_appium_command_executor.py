@@ -14,10 +14,9 @@
 
 from appium.webdriver.appium_connection import AppiumConnection
 from selenium.webdriver.remote.command import Command
+
 from src.testproject.sdk.internal.agent import AgentClient
-from src.testproject.sdk.internal.helpers.reporting_command_executor import (
-    ReportingCommandExecutor,
-)
+from src.testproject.sdk.internal.helpers.reporting_command_executor import ReportingCommandExecutor
 
 
 class CustomAppiumCommandExecutor(AppiumConnection, ReportingCommandExecutor):
@@ -31,10 +30,11 @@ class CustomAppiumCommandExecutor(AppiumConnection, ReportingCommandExecutor):
     def __init__(self, agent_client: AgentClient, remote_server_addr: str):
         AppiumConnection.__init__(self, remote_server_addr=remote_server_addr)
         ReportingCommandExecutor.__init__(
-            self, agent_client=agent_client, command_executor=self
+            self,
+            agent_client=agent_client,
+            command_executor=self,
+            remote_connection=super(),
         )
-
-        self.w3c = agent_client.agent_session.dialect == "W3C"
 
     def execute(self, command: str, params: dict, skip_reporting: bool = False):
         """Execute an Appium command
@@ -45,21 +45,27 @@ class CustomAppiumCommandExecutor(AppiumConnection, ReportingCommandExecutor):
             skip_reporting (bool): True if command should not be reported to Agent, False otherwise
 
         Returns:
-            response: Response returned by the Selenium remote webdriver server
+            response: Response returned by the Selenium remote WebDriver server
         """
         self.update_known_test_name()
 
         response = {}
 
+        self.step_helper.handle_timeout(self.settings.timeout)
+
+        # Handling sleep before execution
+        self.step_helper.handle_sleep(self.settings.sleep_timing_type, self.settings.sleep_time, command)
+
         # Preserve mobile sessions
         if not command == Command.QUIT:
             response = super().execute(command=command, params=params)
 
+        # Handling sleep after execution
+        self.step_helper.handle_sleep(self.settings.sleep_timing_type, self.settings.sleep_time, command, True)
+
         result = response.get("value")
 
-        # Both None and 0 response status values indicate command execution was OK
-        # 0 seems to be returned on some iOS commands
-        passed = True if response.get("status") in [None, 0] else False
+        passed = self.is_command_passed(response=response)
 
         if not skip_reporting:
             self._report_command(command, params, result, passed)

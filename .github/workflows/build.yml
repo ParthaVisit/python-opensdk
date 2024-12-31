@@ -10,10 +10,12 @@ on:
 
 jobs:
   build-test-publish:
+    # Do not run on PRs from forks
+    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8, 3.9]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -30,7 +32,8 @@ jobs:
             exit 1;
           fi
           SDK_VERSION="${SDK_VERSION:1}"
-          echo "::set-env name=SDK_VERSION::$SDK_VERSION"
+          echo "SDK_VERSION=${SDK_VERSION}"
+          echo "TP_SDK_VERSION=${SDK_VERSION}" >> $GITHUB_ENV
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -38,14 +41,9 @@ jobs:
       - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 wheel importlib-metadata
-      - name: Lint with flake8
-        run: |
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 . --count --statistics
+          pip install wheel importlib-metadata
       - name: Build
         run: |
-          export TP_SDK_VERSION=$SDK_VERSION
           python3 setup.py install
       - name: Install test dependencies
         run: |
@@ -54,21 +52,21 @@ jobs:
         run: |
           pytest tests/ci/unittests --doctest-modules --junitxml=build/reports/junit/unit-test-results-${{ matrix.python-version }}.xml
       - name: Check distribution package validity
-        if: matrix.python-version == '3.8'
+        if: matrix.python-version == '3.9'
         run: |
           pip install twine
           python -m twine check dist/*
       - name: Run TestProject Agent
-        if: matrix.python-version == '3.8'
+        if: matrix.python-version == '3.9'
         env:
           TP_API_KEY: ${{ secrets.TP_API_KEY }}
         run: |
           envsubst < .github/ci/docker-compose.yml > docker-compose.yml
           docker-compose -f docker-compose.yml up -d
       - name: Wait for Agent to Register
-        if: matrix.python-version == '3.8'
+        if: matrix.python-version == '3.9'
         run: |
-          trap 'kill $(jobs -p)' EXIT
+          trap 'kill $(jobs -p)' EXIT ERR
 
           attempt_counter=0
           max_attempts=45
@@ -84,37 +82,35 @@ jobs:
             sleep 1
           done
       - name: Run flow tests
-        if: matrix.python-version == '3.8'
+        if: matrix.python-version == '3.9'
         env:
           TP_DEV_TOKEN: ${{ secrets.TP_DEV_TOKEN }}
           TP_AGENT_URL: http://localhost:8585
+          TP_CLOUD_URL: ${{ secrets.TP_CLOUD_URL }}
         run: |
-          trap 'kill $(jobs -p)' EXIT
-          export TP_SDK_VERSION=$SDK_VERSION
+          trap 'kill $(jobs -p)' EXIT ERR
           docker-compose -f docker-compose.yml logs -f --tail=0 >> build/reports/agent/log.txt&
           pytest tests/ci/headless --doctest-modules --junitxml=build/reports/junit/flow-test-results-${{ matrix.python-version }}.xml
       - name: Publish to TestPyPI
-        if: matrix.python-version == '3.8' && startsWith(github.ref, 'refs/heads/master')
+        if: matrix.python-version == '3.9' && startsWith(github.ref, 'refs/heads/master')
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TWINE_TESTPYPI_PASSWORD }}
         run: |
           rm -rf dist
-          export TP_SDK_VERSION=$SDK_VERSION
-          python setup.py sdist bdist_wheel
+          python setup.py clean sdist bdist_wheel
           python -m twine upload --non-interactive --repository testpypi dist/*
       - name: Publish to PyPI
-        if: matrix.python-version == '3.8' && startsWith(github.ref, 'refs/tags/v')
+        if: matrix.python-version == '3.9' && startsWith(github.ref, 'refs/tags/v')
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TWINE_PYPI_PASSWORD }}
         run: |
           rm -rf dist
-          export TP_SDK_VERSION=$SDK_VERSION
-          python setup.py sdist bdist_wheel
+          python setup.py clean sdist bdist_wheel
           python -m twine upload --non-interactive dist/*
       - name: Archive reports
-        if: ${{ failure() }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@v1
         with:
           name: reports

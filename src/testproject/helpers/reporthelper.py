@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import ntpath
 import os
 import inspect
 
@@ -38,13 +39,14 @@ class ReportHelper:
 
         if current_test_info is not None:
             # we're using pytest
-            return current_test_info.split(" ")[0].split("::")[1]
+            result = cls.infer_name_from_pytest_info_for(current_test_info, ReportNamingElement.Test)
         else:
             # Try finding the right entry in the call stack (for unittest or when no testing framework is used)
             logging.debug("Attempting to infer test name using inspect.stack()")
             result = cls.__find_name_in_call_stack_for(ReportNamingElement.Test)
             logging.debug(f"Inferred test name '{result}' from inspect.stack()")
-            return result if result is not None else "Unnamed Test"
+
+        return result if result is not None else "Unnamed Test"
 
     @classmethod
     def infer_project_name(cls) -> str:
@@ -54,9 +56,7 @@ class ReportHelper:
             str: The inferred project name (typically the folder containing the test file)
         """
         # Did we set the project name using our decorator?
-        project_name_in_decorator = os.environ.get(
-            EnvironmentVariable.TP_PROJECT_NAME.value
-        )
+        project_name_in_decorator = os.environ.get(EnvironmentVariable.TP_PROJECT_NAME.value)
         if project_name_in_decorator is not None:
             return project_name_in_decorator
 
@@ -64,16 +64,14 @@ class ReportHelper:
 
         if current_test_info is not None:
             # we're using pytest
-            path_to_test_file = current_test_info.split(" ")[0].split("::")[0]
-            return path_to_test_file[0:path_to_test_file.rfind("/")].replace(
-                "/", "."
-            )
+            result = cls.infer_name_from_pytest_info_for(current_test_info, ReportNamingElement.Project)
         else:
             # Try finding the right entry in the call stack (for unittest or when no testing framework is used)
             logging.debug("Attempting to infer project name using inspect.stack()")
             result = cls.__find_name_in_call_stack_for(ReportNamingElement.Project)
             logging.debug(f"Inferred project name '{result}' from inspect.stack()")
-            return result if result is not None else "Unnamed Project"
+
+        return result if result is not None else "Unnamed Project"
 
     @classmethod
     def infer_job_name(cls) -> str:
@@ -91,14 +89,43 @@ class ReportHelper:
 
         if current_test_info is not None:
             # we're using pytest
-            path_to_test_file = current_test_info.split(" ")[0].split("::")[0]
-            return path_to_test_file.split("::")[0].split("/")[-1].split(".py")[0]
+            result = cls.infer_name_from_pytest_info_for(current_test_info, ReportNamingElement.Job)
         else:
             # Try finding the right entry in the call stack (for unittest or when no testing framework is used)
             logging.debug("Attempting to infer job name using inspect.stack()")
             result = cls.__find_name_in_call_stack_for(ReportNamingElement.Job)
             logging.debug(f"Inferred job name '{result}' from inspect.stack()")
-            return result if result is not None else "Unnamed Job"
+
+        return result if result is not None else "Unnamed Job"
+
+    @classmethod
+    def infer_name_from_pytest_info_for(cls, pytest_info: str, element_to_find: ReportNamingElement):
+        """Uses the test info stored by pytest to infer a project, job or test name
+
+        Args:
+            pytest_info (str): the test info as stored by pytest
+            element_to_find (ReportNamingElement): the report naming element that we're looking for
+
+        Returns:
+            str: the inferred report naming element value
+        """
+        path_to_test_file = pytest_info.split(" ")[0].split("::")[0]
+        if element_to_find == ReportNamingElement.Project:
+            # Return the path without base file name parsed as "package".
+            index = path_to_test_file.rfind("/")
+            if index == -1:
+                index = -3
+            return path_to_test_file[0:index].replace("/", ".")
+        elif element_to_find == ReportNamingElement.Job:
+            # Return the base file name without '.py' extension.
+            head, tail = ntpath.split(path_to_test_file)
+            return (tail or ntpath.basename(head)).split(".py")[0]
+        elif element_to_find == ReportNamingElement.Test:
+            split_values = pytest_info.rsplit(" ", maxsplit=1)[0].split("::")
+            # Return the last value in the array, as it is the test name
+            index = len(split_values) - 1
+            return split_values[index]
+        return None
 
     @classmethod
     def __find_name_in_call_stack_for(cls, element_to_find: ReportNamingElement) -> str:
@@ -128,15 +155,11 @@ class ReportHelper:
                         "tearDownClass",
                     ]:
                         if element_to_find == ReportNamingElement.Project:
-                            path_elements = os.path.normpath(frame.filename).split(
-                                os.sep
-                            )
+                            path_elements = os.path.normpath(frame.filename).split(os.sep)
                             # return the folder name containing the current test file as the project name
                             return str(path_elements[-2])
                         elif element_to_find == ReportNamingElement.Job:
-                            path_elements = os.path.normpath(frame.filename).split(
-                                os.sep
-                            )
+                            path_elements = os.path.normpath(frame.filename).split(os.sep)
                             # return the current test file name minus the .py extension as the job name
                             return str(path_elements[-1]).split(".py")[0]
                         else:
@@ -149,6 +172,7 @@ class ReportHelper:
                         if element_to_find == ReportNamingElement.Test:
                             # return the current method name as the test name
                             return frame.function
+                return None
 
         else:
             # we're using neither pytest nor unittest, so return sensible values

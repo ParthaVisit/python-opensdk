@@ -13,7 +13,10 @@
 # limitations under the License.
 
 from selenium.webdriver import ChromeOptions
+
+from src.testproject.enums.report_type import ReportType
 from src.testproject.sdk.drivers.webdriver.base import BaseDriver
+from src.testproject.sdk.internal.agent.agent_client import AgentClient
 
 
 class Chrome(BaseDriver):
@@ -21,24 +24,46 @@ class Chrome(BaseDriver):
 
     Args:
         chrome_options (ChromeOptions): Chrome automation session desired capabilities and options
+        desired_capabilities (dict): Dictionary object containing desired capabilities for Chrome automation session
         token (str): The developer token used to communicate with the agent
-        projectname (str): Project name to report
-        jobname (str): Job name to report
+        project_name (str): Project name to report
+        job_name (str): Job name to report
         disable_reports (bool): set to True to disable all reporting (no report will be created on TestProject)
+        report_type (ReportType): Type of report to produce - cloud, local or both.
+        socket_session_timeout (int): The connection timeout to the agent in milliseconds.
     """
 
     def __init__(
         self,
-        chrome_options: ChromeOptions = ChromeOptions(),
+        chrome_options: ChromeOptions = None,
+        desired_capabilities: dict = None,
         token: str = None,
-        projectname: str = None,
-        jobname: str = None,
+        project_name: str = None,
+        job_name: str = None,
         disable_reports: bool = False,
+        report_type: ReportType = ReportType.CLOUD_AND_LOCAL,
+        agent_url: str = None,
+        report_name: str = None,
+        report_path: str = None,
+        socket_session_timeout: int = AgentClient.NEW_SESSION_SOCKET_TIMEOUT_MS,
     ):
+
+        # If no options or capabilities are specified at all, use default ChromeOptions
+        if chrome_options is None and desired_capabilities is None:
+            caps = ChromeOptions().to_capabilities()
+        else:
+            # Specified ChromeOptions take precedence over desired capabilities but either can be used
+            caps = chrome_options.to_capabilities() if chrome_options is not None else desired_capabilities
+
         super().__init__(
-            capabilities=chrome_options.to_capabilities(),
+            capabilities=caps,
             token=token,
-            projectname=projectname,
-            jobname=jobname,
+            project_name=project_name,
+            job_name=job_name,
             disable_reports=disable_reports,
+            report_type=report_type,
+            agent_url=agent_url,
+            report_name=report_name,
+            report_path=report_path,
+            socket_session_timeout=socket_session_timeout,
         )

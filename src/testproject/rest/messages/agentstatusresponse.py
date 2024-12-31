@@ -11,14 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from proxy_examples.actions import TypeRandomPhoneAction, ClearFieldsAction
 
 
-class WebExampleAddon:
-    @staticmethod
-    def type_random_phone_action(country_code: str, max_digits: int) -> TypeRandomPhoneAction:
-        return TypeRandomPhoneAction(country_code, max_digits)
+class AgentStatusResponse:
+    """Represent a response message object returned by the Agent when requesting its status
 
-    @staticmethod
-    def clear_fields_action() -> ClearFieldsAction:
-        return ClearFieldsAction()
+    Args:
+        tag (str): The Agent version
+
+    Attributes:
+        _tag (str): The Agent version
+    """
+
+    def __init__(self, tag: str):
+        self._tag = tag
+
+    @property
+    def tag(self) -> str:
+        """Getter for the Agent version field ('tag' in the JSON response)"""
+        return self._tag

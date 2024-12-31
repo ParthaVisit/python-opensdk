@@ -1,13 +1,13 @@
 from .seleniumhelper import SeleniumHelper
 from .confighelper import ConfigHelper
-from .sockethelper import SocketHelper
 from .reporthelper import ReportHelper
 from .logginghelper import LoggingHelper
+from .addonhelper import AddonHelper
 
 __all__ = [
     "SeleniumHelper",
     "ConfigHelper",
-    "SocketHelper",
     "ReportHelper",
     "LoggingHelper",
+    "AddonHelper",
 ]

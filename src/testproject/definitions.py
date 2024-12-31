@@ -29,8 +29,8 @@ def get_sdk_version() -> str:
     version = None
 
     try:
-        sdk_metadata = metadata('testproject-python-sdk')
-        version = sdk_metadata['Version']
+        sdk_metadata = metadata("testproject-python-sdk")
+        version = sdk_metadata["Version"]
     except PackageNotFoundError:
         # This is OK, it just means that there's no previously installed version available
         pass
@@ -44,5 +44,9 @@ def get_sdk_version() -> str:
             raise SdkException("No SDK version definition found in metadata or environment variable")
 
         logging.debug(f"Version read from environment variable: {version}")
+
+    # Sanitize the agent version to return only x.x.x
+    if "-" in version:
+        version = version.split("-")[0]
 
     return version

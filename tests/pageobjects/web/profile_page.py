@@ -15,6 +15,8 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.select import Select
 from src.testproject.sdk.drivers.webdriver.base import BaseDriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 class ProfilePage:
@@ -38,11 +40,30 @@ class ProfilePage:
         return self._driver.find_element(*self.textlabel_saved).is_displayed()
 
     def update_profile(self, country: str, address: str, email: str, phone: str):
-        Select(self._driver.find_element(*self.dropdown_country)).select_by_visible_text(country)
-        self._driver.find_element(*self.textfield_address).send_keys(address)
-        self._driver.find_element(*self.textfield_email).send_keys(email)
-        self._driver.find_element(*self.textfield_phone).send_keys(phone)
+        self.select_country(country)
+        self.type_address(address)
+        self.type_email(email)
+        self.type_phone(phone)
+        self.save()
+
+    def save(self):
         self._driver.find_element(*self.button_save).click()
+
+    def type_phone(self, phone):
+        self._driver.find_element(*self.textfield_phone).send_keys(phone)
+
+    def type_email(self, email):
+        self._driver.find_element(*self.textfield_email).send_keys(email)
+
+    def type_address(self, address):
+        self._driver.find_element(*self.textfield_address).send_keys(address)
+
+    def select_country(self, country):
+        country_dropdown = WebDriverWait(self._driver, 60).until(EC.element_to_be_clickable(self.dropdown_country))
+        Select(country_dropdown).select_by_visible_text(country)
+
+    def is_saved(self):
+        return self._driver.find_element(*self.textlabel_saved).is_displayed()
 
     def logout(self):
         self._driver.find_element(*self.button_logout).click()

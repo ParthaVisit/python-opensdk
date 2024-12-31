@@ -38,10 +38,7 @@ class RedactHelper:
         Returns:
             dict: A redacted version of the dictionary, where password values are replaced by '****'
         """
-        if (
-                command == Command.SEND_KEYS_TO_ELEMENT
-                or command == Command.SEND_KEYS_TO_ACTIVE_ELEMENT
-        ):
+        if command == Command.SEND_KEYS_TO_ELEMENT or command == Command.SEND_KEYS_TO_ACTIVE_ELEMENT:
             element_id = params["id"]
 
             if not self._redaction_required(element_id):
@@ -92,7 +89,8 @@ class RedactHelper:
             Command.GET_ELEMENT_ATTRIBUTE, get_attribute_params, True
         )
 
-        return get_attribute_response.get("value").casefold() == "true"
+        response_value = get_attribute_response.get("value")
+        return False if response_value is None else response_value.casefold() == "true"
 
     def _is_secured_element(self, element_id: str) -> bool:
         """Checks if the element is a secured element (an HTML or iOS password element)
@@ -111,4 +109,7 @@ class RedactHelper:
         get_attribute_response = self._command_executor.execute(
             Command.GET_ELEMENT_ATTRIBUTE, get_attribute_params, True
         )
-        return get_attribute_response["value"] in ["password", "XCUIElementTypeSecureTextField"]
+        return get_attribute_response["value"] in [
+            "password",
+            "XCUIElementTypeSecureTextField",
+        ]

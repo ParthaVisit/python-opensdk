@@ -22,6 +22,7 @@ class SessionResponse:
         session_id (str): Unique identifier for the current development session
         dialect (str): Indicates the WebDriver dialect (W3C or OSS)
         capabilities (dict): Desired session capabilities
+        agent_version (str): Agent version, required to check backwards compatibility
 
     Attributes:
         _dev_socket_port (int): The developer socket port
@@ -29,16 +30,32 @@ class SessionResponse:
         _session_id (str): Unique identifier for the current development session
         _dialect (str): Indicates the WebDriver dialect (W3C or OSS)
         _capabilities (dict): Desired session capabilities
+        _agent_version (str): Agent version, required to check backwards compatibility
     """
 
     def __init__(
-        self, dev_socket_port: int, server_address: str, session_id: str, dialect: str, capabilities: dict,
+        self,
+        dev_socket_port: int,
+        server_address: str,
+        session_id: str,
+        dialect: str,
+        capabilities: dict,
+        agent_version: str,
+        local_report: str,
+        local_report_url: str,
+        uuid: str,
+        warnings: list,
     ):
         self._dev_socket_port = dev_socket_port
         self._server_address = server_address
         self._session_id = session_id
         self._dialect = dialect
         self._capabilities = capabilities
+        self._agent_version = agent_version
+        self._local_report = local_report
+        self._local_report_url = local_report_url
+        self._uuid = uuid
+        self._warnings = warnings
 
     @property
     def dev_socket_port(self) -> int:
@@ -64,3 +81,28 @@ class SessionResponse:
     def capabilities(self) -> dict:
         """Getter for the driver session capabilities"""
         return self._capabilities
+
+    @property
+    def agent_version(self) -> str:
+        """Getter for the Agent version"""
+        return self._agent_version
+
+    @property
+    def local_report(self) -> str:
+        """Getter for the Local Report"""
+        return self._local_report
+
+    @property
+    def local_report_url(self) -> str:
+        """Getter for the Local Report URL"""
+        return self._local_report_url
+
+    @property
+    def uuid(self) -> str:
+        """Getter for the returned UUID"""
+        return self._uuid
+
+    @property
+    def warnings(self) -> list:
+        """Getter for the returned warnings"""
+        return self._warnings

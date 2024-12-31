@@ -3,6 +3,8 @@ from .executionfailuretype import ExecutionFailureType
 from .findbytype import FindByType
 from .reportnamingelement import ReportNamingElement
 from .environmentvariable import EnvironmentVariable
+from .sleep_timing_type import SleepTimingType
+from .screenshot_condition_type import TakeScreenshotConditionType
 
 __all__ = [
     "ExecutionResultType",
@@ -10,4 +12,6 @@ __all__ = [
     "FindByType",
     "ReportNamingElement",
     "EnvironmentVariable",
+    "SleepTimingType",
+    "TakeScreenshotConditionType",
 ]

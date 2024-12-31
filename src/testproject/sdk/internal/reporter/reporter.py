@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import logging
+import os
 
+from src.testproject.classes import ElementSearchCriteria
 from src.testproject.helpers import ReportHelper
 from src.testproject.rest.messages import StepReport, CustomTestReport
 
@@ -31,7 +33,16 @@ class Reporter:
     def __init__(self, command_executor):
         self._command_executor = command_executor
 
-    def step(self, description: str, message: str, passed: bool, screenshot: bool = False):
+    def step(
+        self,
+        description: str,
+        message: str,
+        passed: bool,
+        screenshot: bool = False,
+        element: ElementSearchCriteria = None,
+        inputs: dict = None,
+        outputs: dict = None,
+    ):
         """Sends a step report to the Agent Client
 
         Args:
@@ -39,6 +50,9 @@ class Reporter:
             message (str): A message that goes with the step
             passed (bool): True if the step should be marked as passed, False otherwise
             screenshot (bool): True if a screenshot should be made, False otherwise
+            element (ElementSearchCriteria): The step's element search criteria.
+            inputs (dict): Input parameters associated with the step
+            outputs (dict): Output parameters associated with the step
         """
 
         # First update the current test name and report a test if necessary
@@ -47,7 +61,13 @@ class Reporter:
         if not self._command_executor.disable_reports:
 
             step_report = StepReport(
-                description, message, passed, self._command_executor.create_screenshot() if screenshot else None,
+                description,
+                message,
+                passed,
+                self._command_executor.create_screenshot() if screenshot else None,
+                element,
+                inputs,
+                outputs,
             )
             self._command_executor.agent_client.report_step(step_report)
         else:
@@ -66,12 +86,17 @@ class Reporter:
                 name = ReportHelper.infer_test_name()
 
             if not self._command_executor.disable_auto_test_reports:
-                logging.warning(
-                    "Automatic reporting is enabled, disable this using disable_reports flag "
-                    "when creating a driver instance to avoid duplicates in the report"
-                )
+                if os.getenv("RFW_SUPPRESS_WARNINGS", "false").casefold() != "true":
+                    logging.warning(
+                        "Automatic reporting is enabled, disable this using disable_reports flag "
+                        "when creating a driver instance to avoid duplicates in the report"
+                    )
 
-            test_report = CustomTestReport(name=name, passed=passed, message=message,)
+            test_report = CustomTestReport(
+                name=name,
+                passed=passed,
+                message=message,
+            )
 
             self._command_executor.agent_client.report_test(test_report)
 
@@ -109,3 +134,11 @@ class Reporter:
             disabled (bool): Set to True to disable driver command report redaction.
         """
         self._command_executor.disable_redaction = disabled
+
+    def exclude_test_names(self, excluded_test_names: list):
+        """Excludes a list of test names (as strings) from being reported
+
+        Args:
+            excluded_test_names: list of strings containing tests that should not be reported.
+        """
+        self._command_executor.excluded_test_names = excluded_test_names

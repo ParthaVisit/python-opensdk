@@ -11,16 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from src.testproject.classes import ProxyDescriptor
-from src.testproject.sdk.addons import ActionProxy
 
 
-class TypeRandomPhoneAction(ActionProxy):
-    def __init__(self, country_code: str, max_digits: int = 10):
-        super().__init__()
-        self.proxydescriptor = ProxyDescriptor(
-            guid="GrQN1LQqTEmuYTnIujiEwA", classname="io.testproject.examples.sdk.actions.TypeRandomPhoneAction",
-        )
-        self.countryCode = country_code
-        self.maxDigits = max_digits
-        self.phone = None
+class NotImplementedException(Exception):
+    """Custom exception type to be raised when method that is not implemented is called"""
+
+    pass
