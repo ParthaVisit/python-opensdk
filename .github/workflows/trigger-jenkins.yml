@@ -6,31 +6,12 @@ on:
 
 jobs:
   trigger-jenkins:
+    if: github.event.review.state == 'approved' && github.event.pull_request.base.ref == 'develop'
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-
-    - name: Check if PR is approved
-      run: |
-        if [[ "${{ github.event.review.state }}" == "approved" ]]; then
-          echo "PR Approved, proceeding to check branch..."
-        else
-          echo "PR not approved, skipping Jenkins trigger."
-          exit 0
-        fi
-
-    - name: Check if the PR is for the 'develop' branch
-      run: |
-        SOURCE_BRANCH="${{ github.head_ref }}"
-        echo "PR Source Branch: $SOURCE_BRANCH"
-        if [[ "$SOURCE_BRANCH" != "develop" ]]; then
-          echo "PR is not for 'develop' branch. Skipping Jenkins trigger."
-          exit 0
-        else
-          echo "PR is for 'develop' branch. Proceeding to trigger Jenkins."
-        fi
 
     - name: Get CSRF Crumb
       id: csrf
@@ -40,7 +21,6 @@ jobs:
         echo "CRUMB=$CRUMB" >> $GITHUB_ENV
 
     - name: Trigger Jenkins Job
-      if: github.event.review.state == 'approved' && github.head_ref == 'develop'
       run: |
         SOURCE_BRANCH="${{ github.head_ref }}"
         echo "Triggering Jenkins job with branch: $SOURCE_BRANCH"
