@@ -1,0 +1,49 @@
+name: Trigger Jenkins on PR Approval (only for develop)
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  trigger-jenkins:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Check if PR is approved
+      run: |
+        if [[ "${{ github.event.review.state }}" == "approved" ]]; then
+          echo "PR Approved, proceeding to check branch..."
+        else
+          echo "PR not approved, skipping Jenkins trigger."
+          exit 0
+        fi
+
+    - name: Check if the PR is for the 'develop' branch
+      run: |
+        SOURCE_BRANCH="${{ github.head_ref }}"
+        echo "PR Source Branch: $SOURCE_BRANCH"
+        if [[ "$SOURCE_BRANCH" != "develop" ]]; then
+          echo "PR is not for 'develop' branch. Skipping Jenkins trigger."
+          exit 0
+        else
+          echo "PR is for 'develop' branch. Proceeding to trigger Jenkins."
+        fi
+
+    - name: Get CSRF Crumb
+      id: csrf
+      run: |
+        CRUMB=$(curl -s -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" "${{ secrets.JENKINS_URL }}/crumbIssuer/api/json" | jq -r .crumb)
+        echo "CSRF crumb: $CRUMB"
+        echo "CRUMB=$CRUMB" >> $GITHUB_ENV
+
+    - name: Trigger Jenkins Job
+      if: github.event.review.state == 'approved' && github.head_ref == 'develop'
+      run: |
+        SOURCE_BRANCH="${{ github.head_ref }}"
+        echo "Triggering Jenkins job with branch: $SOURCE_BRANCH"
+        curl -X POST "${{ secrets.JENKINS_URL }}/job/${{ secrets.JENKINS_JOB_NAME }}/buildWithParameters?token=${{ secrets.JENKINS_API_TOKEN }}&BRANCH_NAME=${SOURCE_BRANCH}" \
+          -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
+          -H "Jenkins-Crumb: ${{ env.CRUMB }}"
