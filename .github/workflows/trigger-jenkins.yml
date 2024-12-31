@@ -1,0 +1,31 @@
+name: Trigger Jenkins on PR Approval (only for develop)
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  trigger-jenkins:
+    if: github.event.review.state == 'approved' && github.event.pull_request.base.ref == 'develop'
+    runs-on: ubuntu-latest
+    environment: UAT
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Get CSRF Crumb
+      id: csrf
+      run: |
+        CRUMB=$(curl -s -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" "${{ secrets.JENKINS_URL }}/crumbIssuer/api/json" | jq -r .crumb)
+        echo "CSRF crumb: $CRUMB"
+        echo "CRUMB=$CRUMB" >> $GITHUB_ENV
+
+    - name: Trigger Jenkins Job
+      run: |
+        JENKINS_JOB_NAME="UAT-NewBackend-API"
+        SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
+        echo "Triggering Jenkins job with branch: $SOURCE_BRANCH"
+        curl -X POST "${{ secrets.JENKINS_URL }}/job/$JENKINS_JOB_NAME/buildWithParameters?token=${{ secrets.JENKINS_API_TOKEN }}&BRANCH_NAME=${SOURCE_BRANCH}" \
+          -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
+          -H "Jenkins-Crumb: ${{ env.CRUMB }}"
